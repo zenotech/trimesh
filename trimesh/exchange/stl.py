@@ -48,7 +48,10 @@ def load_stl(file_obj, file_type=None, **kwargs):
         # try to load the file as an ASCII STL
         # if the header doesn't match the file length a HeaderError will be
         # raised
-        return load_stl_ascii(file_obj)
+	solid_index = 0
+	if 'solid_index' in kwargs:
+	   solid_index = kwargs['solid_index']
+        return load_stl_ascii(file_obj, solid_index)
 
 
 def load_stl_binary(file_obj):
@@ -123,7 +126,7 @@ def load_stl_binary(file_obj):
     return result
 
 
-def load_stl_ascii(file_obj):
+def load_stl_ascii(file_obj, solid_index = 0):
     """
     Load an ASCII STL file from a file object.
 
@@ -139,33 +142,63 @@ def load_stl_ascii(file_obj):
               face_normals: (m,3) float, normal vector of each face
     """
 
-    # the first line is the header
-    header = file_obj.readline()
-    # make sure header is a string, not bytes
-    if hasattr(header, 'decode'):
-        try:
-            header = header.decode('utf-8')
-        except BaseException:
-            header = ''
-    # save header to metadata
-    metadata = {'header': header}
+    # Read all line
+    text_lines = file_obj.readlines();
+    line_count = 0;
+    blob = []
+    metadata = []
+    while line_count < len(text_lines):
+       # the first line is the header
+       header = text_lines[line_count]
+       line_count += 1
+       # make sure header is a string, not bytes
+       if hasattr(header, 'decode'):
+          try:
+             header = header.decode('utf-8')
+          except BaseException:
+             header = ''
+       # save header to metadata
+       metadata.append({'header': header})
 
-    # read all text into one string
-    text = file_obj.read()
-    # convert bytes to string
-    if hasattr(text, 'decode'):
-        text = text.decode('utf-8')
-    # split by endsolid keyword
-    text = text.lower().split('endsolid')[0]
-    # create array of splits
-    blob = np.array(text.strip().split())
+       # read all text into one string
+       start_line = line_count
+       while True:
+          line = text_lines[line_count].lower()
+          # convert bytes to string	  
+          if hasattr(line, 'decode'):
+              line = line.decode('utf-8')
+          line_count += 1
+	  # check for end of solid
+	  if line.startswith('endsolid'):
+              end_line = line_count
+	      break
+
+       text = ''.join(text_lines[start_line:end_line-1])
+       # convert bytes to string
+       if hasattr(text, 'decode'):
+          text = text.decode('utf-8')
+       # create array of splits
+       blob.append(np.array(text.strip().split()))
+
+       # print 'Read: ' + str(len(metadata))
+
+    # print metadata
 
     # there are 21 'words' in each face
     face_len = 21
 
+    read_solid = solid_index
+
+    if read_solid >= len(blob):
+       raise RuntimeError("solid_index > then number of solids in file")
+
+    blob = blob[read_solid]
+    metadata = metadata[read_solid]
+    #print blob
+
     # length of blob should be multiple of face_len
     if (len(blob) % face_len) != 0:
-        raise HeaderError('Incorrect length STL file!')
+        raise HeaderError('Incorrect length STL file! ' + str(len(blob) % face_len))
     face_count = int(len(blob) / face_len)
 
     # this offset is to be added to a fixed set of tiled indices

@@ -48,9 +48,9 @@ def load_stl(file_obj, file_type=None, **kwargs):
         # try to load the file as an ASCII STL
         # if the header doesn't match the file length a HeaderError will be
         # raised
-	solid_index = 0
-	if 'solid_index' in kwargs:
-	   solid_index = kwargs['solid_index']
+        solid_index = 0
+        if 'solid_index' in kwargs:
+            solid_index = kwargs['solid_index']
         return load_stl_ascii(file_obj, solid_index)
 
 
@@ -169,9 +169,9 @@ def load_stl_ascii(file_obj, solid_index = 0):
               line = line.decode('utf-8')
           line_count += 1
 	  # check for end of solid
-	  if line.startswith('endsolid'):
+          if line.startswith('endsolid'):
               end_line = line_count
-	      break
+              break
 
        text = ''.join(text_lines[start_line:end_line-1])
        # convert bytes to string
